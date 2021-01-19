@@ -29,7 +29,7 @@ public:
     ~block_queue()
     {
         _mutex.lock();
-        if (_array != nullptr)
+        if (_array != NULL)
         {
             delete[] _array;
         }
@@ -156,12 +156,12 @@ public:
         struct timespec t = {0, 0};
         struct timeval now = {0, 0};
 
-        gettimeofday(&now, nullptr);
+        gettimeofday(&now, NULL);
         _mutex.lock();
         if (_size <= 0)
         {
             t.tv_sec = now.tv_sec + ms_timeout / 1000;
-            t.tv_nsec = (ms_timeout % 1000) * 1000;
+            t.tv_nsec = ((ms_timeout % 1000) + now.tv_usec) * 1000;
             if (!_cond.timewait(_mutex, get(), t))
             {
                 _mutex.unlock();
