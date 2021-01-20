@@ -139,7 +139,8 @@ void Log::write_log(int level, const char *format, ...)
     log_str = m_buf;
 
     m_mutex.unlock();
-
+    
+    //加入阻塞队列或者直接写入
     if (m_is_async && !m_log_queue->isFull())
     {
         m_log_queue->push(log_str);

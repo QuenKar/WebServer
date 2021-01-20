@@ -34,7 +34,7 @@ int setnonblocking(int fd)
     return old_option;
 }
 
-void addfd(int epollfd, int fd, int TriggerMode)
+void addfd(int epollfd, int fd, bool one_shot, int TriggerMode)
 {
     epoll_event event;
     event.data.fd = fd;
@@ -44,6 +44,8 @@ void addfd(int epollfd, int fd, int TriggerMode)
     else
         event.events = EPOLLIN | EPOLLET | EPOLLRDHUP; //采用ET模式
 
+    if (one_shot)
+        event.events |= EPOLLONESHOT;
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
     setnonblocking(fd);
 }
@@ -65,7 +67,7 @@ void addsig(int sig, void handler(int), bool restart)
 
     if (restart)
         sa.sa_flags |= SA_RESTART;
-        
+
     sigfillset(&sa.sa_mask);
     assert(sigaction(sig, &sa, NULL) != -1);
 }
