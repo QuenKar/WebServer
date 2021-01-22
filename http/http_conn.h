@@ -110,7 +110,7 @@ private:
     bool add_content_type();
     bool add_content_length(int content_length);
     bool add_linger();
-    // 这个是干嘛用的？
+    
     bool add_blank_line();
 
 public:

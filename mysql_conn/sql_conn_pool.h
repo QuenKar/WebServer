@@ -52,7 +52,7 @@ public:
 class connRAII
 {
 public:
-    connRAII(MYSQL **conn, conn_pool *connPoll);
+    connRAII(MYSQL **conn, conn_pool *connPool);
     ~connRAII();
 
 private:
