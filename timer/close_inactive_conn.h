@@ -18,9 +18,6 @@
 
 #include "min_heap.h"
 
-#define FD_LIMIT 65535
-#define MAX_EVENT_NUMBER 1024
-#define TIMESLOT 5
 
 static int pipefd[2];
 static time_heap timer_lst;
