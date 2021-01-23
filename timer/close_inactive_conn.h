@@ -17,71 +17,88 @@
 #include <pthread.h>
 
 #include "min_heap.h"
+#include "../http/http_conn.h"
 
-
-static int pipefd[2];
-static time_heap timer_lst;
-static int epollfd = 0;
-
-int setnonblocking(int fd)
+class http_conn;
+class clz_conn
 {
-    int old_option = fcntl(fd, F_GETFL);
-    int new_option = old_option | O_NONBLOCK;
-    fcntl(fd, F_SETFL, new_option);
-    return old_option;
-}
+public:
+    int m_TIMESLOT;
+    static int *pipefd;
+    time_heap timer_lst;
+    static int epollfd;
 
-void addfd(int epollfd, int fd, bool one_shot, int TriggerMode)
-{
-    epoll_event event;
-    event.data.fd = fd;
+public:
+    clz_conn() {}
+    ~clz_conn() {}
 
-    if (TriggerMode == 0)
-        event.events = EPOLLIN | EPOLLRDHUP; //采用LT模式
-    else
-        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP; //采用ET模式
+    void init(int timeslot)
+    {
+        m_TIMESLOT = timeslot;
+    }
 
-    if (one_shot)
-        event.events |= EPOLLONESHOT;
-    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
-    setnonblocking(fd);
-}
+    int setnonblocking(int fd)
+    {
+        int old_option = fcntl(fd, F_GETFL);
+        int new_option = old_option | O_NONBLOCK;
+        fcntl(fd, F_SETFL, new_option);
+        return old_option;
+    }
 
-void sig_handler(int sig)
-{
-    int save_errno = errno;
-    int msg = sig;
-    send(pipefd[1], (char *)&msg, 1, 0);
-    errno = save_errno;
-}
+    void addfd(int epollfd, int fd, bool one_shot, int TriggerMode)
+    {
+        epoll_event event;
+        event.data.fd = fd;
 
-void addsig(int sig, void handler(int), bool restart)
-{
-    //Structure describing the action to be taken when a signal arrives.
-    struct sigaction sa;
-    memset(&sa, '\0', sizeof(sa));
-    sa.sa_handler = handler;
+        if (TriggerMode == 0)
+            event.events = EPOLLIN | EPOLLRDHUP; //采用LT模式
+        else
+            event.events = EPOLLIN | EPOLLET | EPOLLRDHUP; //采用ET模式
 
-    if (restart)
-        sa.sa_flags |= SA_RESTART;
+        if (one_shot)
+            event.events |= EPOLLONESHOT;
+        epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+        setnonblocking(fd);
+    }
 
-    sigfillset(&sa.sa_mask);
-    assert(sigaction(sig, &sa, NULL) != -1);
-}
+    static void sig_handler(int sig)
+    {
+        int save_errno = errno;
+        int msg = sig;
+        send(pipefd[1], (char *)&msg, 1, 0);
+        errno = save_errno;
+    }
 
-void timer_handler()
-{
-    timer_lst.tick();
-    alarm(TIMESLOT);
-}
+    void addsig(int sig, void (*handler)(int), bool restart = true)
+    {
+        //Structure describing the action to be taken when a signal arrives.
+        struct sigaction sa;
+        memset(&sa, '\0', sizeof(sa));
+        sa.sa_handler = handler;
+
+        if (restart)
+            sa.sa_flags |= SA_RESTART;
+
+        sigfillset(&sa.sa_mask);
+        assert(sigaction(sig, &sa, NULL) != -1);
+    }
+
+    void timer_handler()
+    {
+        timer_lst.tick();
+        alarm(m_TIMESLOT);
+    }
+};
+int *clz_conn::pipefd = NULL;
+int clz_conn::epollfd = 0;
 
 void cb_func(client_data *user_data)
 {
-    epoll_ctl(epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);
+    epoll_ctl(clz_conn::epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);
     assert(user_data);
     close(user_data->sockfd);
-    printf("close fd %d\n", user_data->sockfd);
     //改为http_conn
+    http_conn::m_user_count--;
 }
 
 #endif

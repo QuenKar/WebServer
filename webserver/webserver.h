@@ -35,8 +35,8 @@ public:
     void event_listen();
     void event_loop();
     void timer(int connfd, struct sockaddr_in client_address);
-    // void adjust_timer(util_timer *timer);
-    // void deal_timer(util_timer *timer, int sockfd);
+    void adjust_timer(heap_timer *timer);
+    void deal_timer(heap_timer *timer, int sockfd);
 
     bool dealclientdata();
     bool dealwithsignal(bool &timeout, bool &stop_server);
@@ -47,7 +47,7 @@ public:
     int m_port;
     char *m_root;
     int m_log_write;
-    int m_close_log;
+    int _close_log;
     int m_actormodel;
 
     int m_pipefd[2];
@@ -72,7 +72,7 @@ public:
     int m_CONNTrigmode;
 
     client_data *users_timer;
-
+    clz_conn utils;
 };
 
 #endif

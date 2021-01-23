@@ -44,7 +44,7 @@ public:
         delete[] m_threads;
     }
 
-    bool aapend(T *request, int state)
+    bool append(T *request, int state)
     {
         m_queuelocker.lock();
         if (m_workqueue.size() >= m_max_requests)
@@ -58,7 +58,7 @@ public:
         m_queuestat.post();
         return true;
     }
-    bool addpend_p(T *request)
+    bool append_p(T *request)
     {
         m_queuelocker.lock();
         if (m_workqueue.size() >= m_max_requests)

@@ -22,10 +22,7 @@ struct client_data
 class heap_timer
 {
 public:
-    heap_timer(int delay)
-    {
-        expire = time(NULL) + delay;
-    }
+    heap_timer() {}
 
     time_t expire;
     void (*cb_func)(client_data *);
@@ -35,8 +32,9 @@ public:
 class time_heap
 {
 public:
-    time_heap(int cap) throw(std::exception) : capacity(cap), cur_size(0)
+    time_heap(int cap = 800, int ts = 5) throw(std::exception) : capacity(cap), cur_size(0)
     {
+        timeslot = ts;
         array = new heap_timer *[capacity];
         if (!array)
         {
@@ -46,6 +44,7 @@ public:
         {
             array[i] = NULL;
         }
+        cur_size = 0;
     }
 
     time_heap(heap_timer **init_array, int size, int capacity) throw(std::exception) : cur_size(size), capacity(capacity)
@@ -120,6 +119,24 @@ public:
         }
         //延迟销毁，节省定时器删除的时间，缺点是数组易膨胀
         timer->cb_func = NULL;
+    }
+
+    void adjust(heap_timer *timer)
+    {
+        if (!timer)
+        {
+            return;
+        }
+        time_t cur = time(NULL);
+        timer->expire = cur + 3 * timeslot;
+        for (int i = 0; i < cur_size; i++)
+        {
+            if (array[i] == timer)
+            {
+                percolate_down(i);
+                break;
+            }
+        }
     }
 
     heap_timer *top() const
@@ -228,6 +245,9 @@ private:
     heap_timer **array;
     int capacity;
     int cur_size;
+    int timeslot;
 };
+
+
 
 #endif

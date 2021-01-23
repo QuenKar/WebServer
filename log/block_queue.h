@@ -162,7 +162,7 @@ public:
         {
             t.tv_sec = now.tv_sec + ms_timeout / 1000;
             t.tv_nsec = ((ms_timeout % 1000) + now.tv_usec) * 1000;
-            if (!_cond.timewait(_mutex, get(), t))
+            if (!_cond.timewait(_mutex.get(), t))
             {
                 _mutex.unlock();
                 return false;

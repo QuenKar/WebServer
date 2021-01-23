@@ -19,13 +19,14 @@
 #include <errno.h>
 #include <sys/wait.h>
 #include <sys/uio.h>
-
 #include <map>
 
 #include "../lock/locker.h"
 #include "../mysql_conn/sql_conn_pool.h"
 #include "../timer/close_inactive_conn.h"
 #include "../log/log.h"
+
+
 
 class http_conn
 {
@@ -99,7 +100,7 @@ private:
     char *get_line()
     {
         return m_read_buf + m_start_line;
-    }
+    };
     LINE_STATUS parse_line();
     // 填充response
     void unmap();
@@ -110,7 +111,7 @@ private:
     bool add_content_type();
     bool add_content_length(int content_length);
     bool add_linger();
-    
+
     bool add_blank_line();
 
 public:
@@ -175,5 +176,7 @@ private:
     char sql_password[100];
     char sql_dbname[100];
 };
+
+
 
 #endif

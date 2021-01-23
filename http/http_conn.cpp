@@ -17,8 +17,32 @@ const char *error_500_form = "There was an unusual problem serving the request f
 locker m_lock;
 map<string, string> users;
 
-extern int setnonblocking(int fd);
-extern void addfd(int epollfd, int fd, bool one_shot, int TriggerMode);
+//对文件描述符设置非阻塞
+int setnonblocking(int fd)
+{
+    int old_option = fcntl(fd, F_GETFL);
+    int new_option = old_option | O_NONBLOCK;
+    fcntl(fd, F_SETFL, new_option);
+    return old_option;
+}
+
+//将内核事件表注册读事件，ET模式，选择开启EPOLLONESHOT
+void addfd(int epollfd, int fd, bool one_shot, int TRIGMode)
+{
+    epoll_event event;
+    event.data.fd = fd;
+
+    if (1 == TRIGMode)
+        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+    else
+        event.events = EPOLLIN | EPOLLRDHUP;
+
+    if (one_shot)
+        event.events |= EPOLLONESHOT;
+    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+    setnonblocking(fd);
+}
+
 void removefd(int epollfd, int fd)
 {
     epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
@@ -611,8 +635,6 @@ bool http_conn::add_content(const char *content)
 {
     return add_response("%s", content);
 }
-
-
 
 bool http_conn::process_write(HTTP_CODE ret)
 {
