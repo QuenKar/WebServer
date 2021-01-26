@@ -1,3 +1,8 @@
+/*************************************************************
+*循环数组实现的阻塞队列，m_back = (m_back + 1) % m_max_size;  
+*线程安全，每个操作前都要先加互斥锁，操作完后，再解锁
+**************************************************************/
+
 #ifndef BLOCK_QUEUE_H
 #define BLOCK_QUEUE_H
 
@@ -8,189 +13,198 @@
 #include "../lock/locker.h"
 using namespace std;
 
-template <typename T>
+template <class T>
 class block_queue
 {
 public:
-    block_queue(int capacity = 1000)
+    block_queue(int max_size = 1000)
     {
-        if (capacity <= 0)
+        if (max_size <= 0)
         {
             exit(-1);
         }
 
-        _capacity = capacity;
-        _array = new T[capacity];
-        _size = 0;
-        _front = -1;
-        _back = -1;
-    }
-
-    ~block_queue()
-    {
-        _mutex.lock();
-        if (_array != NULL)
-        {
-            delete[] _array;
-        }
-        _mutex.unlock();
+        m_max_size = max_size;
+        m_array = new T[max_size];
+        m_size = 0;
+        m_front = -1;
+        m_back = -1;
     }
 
     void clear()
     {
-        _mutex.lock();
-        _size = 0;
-        _front = -1;
-        _back = -1;
-        _mutex.unlock();
+        m_mutex.lock();
+        m_size = 0;
+        m_front = -1;
+        m_back = -1;
+        m_mutex.unlock();
     }
 
-    bool isFull()
+    ~block_queue()
     {
-        _mutex.lock();
-        if (_size >= _capacity)
+        m_mutex.lock();
+        if (m_array != NULL)
+            delete[] m_array;
+
+        m_mutex.unlock();
+    }
+
+    bool full()
+    {
+        m_mutex.lock();
+        if (m_size >= m_max_size)
         {
-            _mutex.unlock();
+
+            m_mutex.unlock();
             return true;
         }
-        _mutex.unlock();
+        m_mutex.unlock();
         return false;
     }
 
-    bool isEmpty()
+    bool empty()
     {
-        _mutex.lock();
-        if (_size == 0)
+        m_mutex.lock();
+        if (0 == m_size)
         {
-            _mutex.unlock();
+            m_mutex.unlock();
             return true;
         }
-        _mutex.unlock();
+        m_mutex.unlock();
         return false;
     }
 
     bool front(T &value)
     {
-        _mutex.lock();
-        if (_size == 0)
+        m_mutex.lock();
+        if (0 == m_size)
         {
-            _mutex.unlock();
+            m_mutex.unlock();
             return false;
         }
-        value = _array[_front];
-        _mutex.unlock();
+        value = m_array[m_front];
+        m_mutex.unlock();
         return true;
     }
 
     bool back(T &value)
     {
-        _mutex.lock();
-        if (_size == 0)
+        m_mutex.lock();
+        if (0 == m_size)
         {
-            _mutex.unlock();
+            m_mutex.unlock();
             return false;
         }
-        value = _array[_back];
-        _mutex.unlock();
+        value = m_array[m_back];
+        m_mutex.unlock();
         return true;
     }
 
     int size()
     {
-        int s = 0;
-        _mutex.lock();
-        s = _size;
-        _mutex.unlock();
-        return s;
+        int tmp = 0;
+
+        m_mutex.lock();
+        tmp = m_size;
+
+        m_mutex.unlock();
+        return tmp;
     }
 
-    int capacity()
+    int max_size()
     {
-        int c = 0;
-        _mutex.lock();
-        c = _capacity;
-        _mutex.unlock();
-        return c;
-    }
+        int tmp = 0;
 
+        m_mutex.lock();
+        tmp = m_max_size;
+
+        m_mutex.unlock();
+        return tmp;
+    }
+    
+    
     bool push(const T &item)
     {
-        _mutex.lock();
-        if (_size >= _capacity)
+
+        m_mutex.lock();
+        if (m_size >= m_max_size)
         {
-            _cond.broadcast();
-            _mutex.unlock();
+
+            m_cond.broadcast();
+            m_mutex.unlock();
             return false;
         }
 
-        _back = (_back + 1) % _capacity;
-        _array[_back] = item;
-        _size++;
+        m_back = (m_back + 1) % m_max_size;
+        m_array[m_back] = item;
 
-        _cond.broadcast();
-        _mutex.unlock();
+        m_size++;
+
+        m_cond.broadcast();
+        m_mutex.unlock();
         return true;
     }
 
     bool pop(T &item)
     {
-        _mutex.lock();
-        while (_size <= 0)
+
+        m_mutex.lock();
+        while (m_size <= 0)
         {
-            if (!_cond.wait(_mutex.get()))
+            if (!m_cond.wait(m_mutex.get()))
             {
-                _mutex.unlock();
+                m_mutex.unlock();
                 return false;
             }
         }
 
-        _front = (_front + 1) % _capacity;
-        item = _array[_front];
-        _size--;
-        _mutex.unlock();
+        m_front = (m_front + 1) % m_max_size;
+        item = m_array[m_front];
+        m_size--;
+        m_mutex.unlock();
         return true;
     }
 
+    //增加了超时处理
     bool pop(T &item, int ms_timeout)
     {
         struct timespec t = {0, 0};
         struct timeval now = {0, 0};
-
         gettimeofday(&now, NULL);
-        _mutex.lock();
-        if (_size <= 0)
+        m_mutex.lock();
+        if (m_size <= 0)
         {
             t.tv_sec = now.tv_sec + ms_timeout / 1000;
-            t.tv_nsec = ((ms_timeout % 1000) + now.tv_usec) * 1000;
-            if (!_cond.timewait(_mutex.get(), t))
+            t.tv_nsec = (ms_timeout % 1000) * 1000;
+            if (!m_cond.timewait(m_mutex.get(), t))
             {
-                _mutex.unlock();
+                m_mutex.unlock();
                 return false;
             }
         }
 
-        if (_size <= 0)
+        if (m_size <= 0)
         {
-            _mutex.unlock();
+            m_mutex.unlock();
             return false;
         }
 
-        _front = (_front + 1) % _capacity;
-        item = _array[_front];
-        _size--;
-        _mutex.unlock();
+        m_front = (m_front + 1) % m_max_size;
+        item = m_array[m_front];
+        m_size--;
+        m_mutex.unlock();
         return true;
     }
 
 private:
-    locker _mutex;
-    cond _cond;
-    T *_array;
-    int _size;
-    int _front;
-    int _back;
+    locker m_mutex;
+    cond m_cond;
 
-    int _capacity;
+    T *m_array;
+    int m_size;
+    int m_max_size;
+    int m_front;
+    int m_back;
 };
 
 #endif

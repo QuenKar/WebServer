@@ -9,20 +9,20 @@ using std::exception;
 
 #define BUFFER_SIZE 64
 
-class heap_timer;
+class util_timer;
 
 struct client_data
 {
     sockaddr_in address;
     int sockfd;
     char buf[BUFFER_SIZE];
-    heap_timer *timer;
+    util_timer *timer;
 };
 
-class heap_timer
+class util_timer
 {
 public:
-    heap_timer() {}
+    util_timer() {}
 
     time_t expire;
     void (*cb_func)(client_data *);
@@ -32,10 +32,10 @@ public:
 class time_heap
 {
 public:
-    time_heap(int cap = 800, int ts = 5) throw(std::exception) : capacity(cap), cur_size(0)
+    time_heap(int cap = 800, int ts = 5) : capacity(cap), cur_size(0)
     {
         timeslot = ts;
-        array = new heap_timer *[capacity];
+        array = new util_timer *[capacity];
         if (!array)
         {
             throw std::exception();
@@ -47,14 +47,14 @@ public:
         cur_size = 0;
     }
 
-    time_heap(heap_timer **init_array, int size, int capacity) throw(std::exception) : cur_size(size), capacity(capacity)
+    time_heap(util_timer **init_array, int size, int capacity) : cur_size(size), capacity(capacity)
     {
         if (capacity < size)
         {
             throw std::exception();
         }
 
-        array = new heap_timer *[capacity];
+        array = new util_timer *[capacity];
         if (!array)
         {
             throw std::exception();
@@ -86,7 +86,7 @@ public:
     }
 
 public:
-    void add_timer(heap_timer *timer) throw(std::exception)
+    void add_timer(util_timer *timer)
     {
         if (!timer)
         {
@@ -111,7 +111,7 @@ public:
         array[hole] = timer;
     }
 
-    void del_timer(heap_timer *timer)
+    void del_timer(util_timer *timer)
     {
         if (!timer)
         {
@@ -121,7 +121,7 @@ public:
         timer->cb_func = NULL;
     }
 
-    void adjust(heap_timer *timer)
+    void adjust_timer(util_timer *timer)
     {
         if (!timer)
         {
@@ -139,7 +139,7 @@ public:
         }
     }
 
-    heap_timer *top() const
+    util_timer *top() const
     {
         if (empty())
         {
@@ -165,7 +165,7 @@ public:
 
     void tick()
     {
-        heap_timer *tmp = array[0];
+        util_timer *tmp = array[0];
         time_t cur = time(NULL);
 
         while (!empty())
@@ -198,7 +198,7 @@ private:
 
     void percolate_down(int hole)
     {
-        heap_timer *temp = array[hole];
+        util_timer *temp = array[hole];
         int child = 0;
         for (; ((hole * 2 + 1) <= (cur_size - 1)); hole = child)
         {
@@ -219,9 +219,9 @@ private:
         array[hole] = temp;
     }
 
-    void resize() throw(std::exception)
+    void resize()
     {
-        heap_timer **temp = new heap_timer *[2 * capacity];
+        util_timer **temp = new util_timer *[2 * capacity];
         if (!temp)
         {
             throw std::exception();
@@ -242,12 +242,10 @@ private:
     }
 
 private:
-    heap_timer **array;
+    util_timer **array;
     int capacity;
     int cur_size;
     int timeslot;
 };
-
-
 
 #endif
