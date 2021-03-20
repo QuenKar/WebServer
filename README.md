@@ -2,6 +2,9 @@
 
 :zap:c/c++实现的小型web服务器:zap:
 
+远程访问:
+`http://121.5.75.28:9999/`
+
 ## 功能
 
 - 利用IO复用技术Epoll与线程池实现多线程的Reactor与Proactor高并发模型；
